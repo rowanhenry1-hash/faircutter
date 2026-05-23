@@ -13,15 +13,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+/**
+ * Only allow `next` redirects to internal paths to prevent open-redirect.
+ */
+function safeNext(raw: string | undefined): string {
+  if (!raw) return "/app";
+  if (!raw.startsWith("/")) return "/app";
+  if (raw.startsWith("//")) return "/app";
+  return raw;
+}
+
 export default async function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mode?: string; error?: string }>;
+  searchParams: Promise<{ mode?: string; error?: string; next?: string }>;
 }) {
-  const session = await auth();
-  if (session?.user) redirect("/app");
+  const { mode, error, next } = await searchParams;
+  const safe = safeNext(next);
 
-  const { mode, error } = await searchParams;
+  const session = await auth();
+  if (session?.user) redirect(safe);
+
   const passwordMode = mode === "password";
 
   return (
@@ -50,7 +62,7 @@ export default async function AuthPage({
                 await signIn("credentials", {
                   email: formData.get("email"),
                   password: formData.get("password"),
-                  redirectTo: "/app",
+                  redirectTo: safe,
                 });
               }}
               className="space-y-3"
@@ -79,7 +91,7 @@ export default async function AuthPage({
                 "use server";
                 await signIn("resend", {
                   email: formData.get("email"),
-                  redirectTo: "/app",
+                  redirectTo: safe,
                 });
               }}
               className="space-y-3"
@@ -97,7 +109,11 @@ export default async function AuthPage({
 
         <CardFooter className="flex flex-col gap-2">
           <Link
-            href={passwordMode ? "/auth" : "/auth?mode=password"}
+            href={
+              passwordMode
+                ? `/auth${next ? `?next=${encodeURIComponent(next)}` : ""}`
+                : `/auth?mode=password${next ? `&next=${encodeURIComponent(next)}` : ""}`
+            }
             className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             {passwordMode ? "Use a magic link instead" : "Use a password instead"}

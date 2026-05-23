@@ -29,6 +29,7 @@ import { applyRules } from "@/rules/engine";
 import { ruleSchema, splitTypes, type Rule } from "@/rules/types";
 import { stringToMinorUnits } from "@/lib/money";
 import { TEMPLATES, bindTemplate } from "@/rules/templates";
+import { randomAccessCode } from "@/lib/ghost";
 
 async function requireMembership(groupId: string) {
   const session = await auth();
@@ -465,4 +466,65 @@ export async function deleteSettlement(formData: FormData) {
   revalidatePath(`/app/g/${groupId}`);
   revalidatePath("/app");
   redirect(`/app/g/${groupId}/balances`);
+}
+
+// ---------------------------------------------------------------------------
+// Ghost access codes (invite page)
+// ---------------------------------------------------------------------------
+
+export async function regenerateGhostCode(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  const ghostId = formData.get("ghostId") as string;
+  await requireMembership(groupId);
+
+  const [ghost] = await db
+    .select()
+    .from(ghostUsers)
+    .where(eq(ghostUsers.id, ghostId))
+    .limit(1);
+  if (!ghost || ghost.groupId !== groupId) {
+    throw new Error("Ghost not found in this group");
+  }
+  if (ghost.claimedByUserId) {
+    throw new Error("Can't regenerate — this ghost has already claimed an account");
+  }
+
+  await db
+    .update(ghostUsers)
+    .set({ accessCode: randomAccessCode() })
+    .where(eq(ghostUsers.id, ghostId));
+
+  revalidatePath(`/app/g/${groupId}/invite`);
+}
+
+export async function addGhostMember(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  await requireMembership(groupId);
+
+  const displayName = ((formData.get("displayName") as string) || "").trim();
+  if (!displayName) throw new Error("Name is required");
+  const incomeRaw = ((formData.get("declaredIncome") as string) || "").trim();
+  const declaredIncome = incomeRaw
+    ? Math.round(Number(incomeRaw.replace(/[^0-9]/g, "")) * 100)
+    : null;
+
+  const [ghost] = await db
+    .insert(ghostUsers)
+    .values({
+      groupId,
+      displayName,
+      accessCode: randomAccessCode(),
+      declaredIncome: Number.isFinite(declaredIncome) ? declaredIncome : null,
+    })
+    .returning();
+
+  await db.insert(groupMembers).values({
+    groupId,
+    ghostUserId: ghost.id,
+    role: "member",
+    incomeSnapshot: ghost.declaredIncome,
+  });
+
+  revalidatePath(`/app/g/${groupId}/invite`);
+  revalidatePath(`/app/g/${groupId}`);
 }

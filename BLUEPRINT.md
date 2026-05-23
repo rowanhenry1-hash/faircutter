@@ -352,6 +352,44 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 **Next prompt:** see Section 9 at bottom of file.
 
+### Step 8 — Claude Code — 2026-05-23
+**What was done:**
+- New public route `/view/[code]` — no-auth ghost viewer (Screen 16) showing: group name, ghost's display name, net balance, recent expenses affecting them with applied rule name, active rules summary, claim CTA.
+- Inline `GhostSettleForm` (client component) on the viewer for pairwise "I paid X" settlements; calls `recordGhostSettlement` scoped to the access code as the only credential.
+- `/view/[code]/claim` server-only route — bounces to `/auth?next=…` if not signed in, then claims the ghost via `claimGhost` and redirects to the authenticated group.
+- Polished `/app/g/[id]/invite` (Screen 15) with copy-link buttons, code preview button, regenerate, add-another-ghost form, and a separate "claimed accounts" section so members can see who's converted.
+- `/auth` now honors a `next` searchParam for safe internal redirects (open-redirect guarded). Used by claim flow.
+- New `src/lib/ghost.ts` — `randomAccessCode`, `normalizeAccessCode`, `resolveAccessCode`. `resolveAccessCode` looks up ghost + group + (if claimed) claiming user.
+- New server actions in `actions.ts`: `regenerateGhostCode`, `addGhostMember`. New file `src/app/view/[code]/actions.ts` with `recordGhostSettlement` and `claimGhost`.
+
+**Files created/changed:**
+- `src/lib/ghost.ts` (new)
+- `src/app/view/[code]/page.tsx`, `src/app/view/[code]/settle-form.tsx`, `src/app/view/[code]/actions.ts`, `src/app/view/[code]/claim/page.tsx` (all new)
+- `src/app/app/g/[id]/invite/page.tsx` (rewrite), `src/app/app/g/[id]/invite/copy-link-button.tsx` (new)
+- `src/app/app/g/[id]/actions.ts` (appended `regenerateGhostCode`, `addGhostMember`)
+- `src/app/auth/page.tsx` (added safe `next` redirect handling)
+
+**Claim migration details (per Step 8 prompt deliverable #3):**
+- `ghost_users.claimed_by_user_id` and `claimed_at` are set on the ghost row.
+- `group_members` row is re-pointed: `userId` set to the claimer, `ghostUserId` cleared.
+- `expense_participants`, `expenses.paidByGhostId`, and `settlements` are **not** rewritten — they continue to reference the ghost by id. History stays intact and labels still resolve through the ghost row.
+- Idempotent: claiming an already-claimed-by-same-user invite is a no-op; claiming someone else's invite throws.
+- If the claiming user is already a member of the group (their own group), we mark the ghost claimed but skip the re-point.
+
+**Deviations from plan and why:**
+- Did not enforce a "members only" check on `regenerateGhostCode` beyond the existing `requireMembership` guard — that's what was specified.
+- The viewer's "Mark a payment" surface only lists debts the ghost *owes* (not what they're owed). Reverse case (someone marking they were paid) can be triggered from the authenticated balances page; ghost shouldn't be able to mark settlements *on behalf of* other people.
+
+**What I learned that might affect future steps:**
+- Vercel deployments need `AUTH_URL` set to the deployed origin or magic links will land on localhost. Worth noting in the README in Step 11.
+- For real-world claim flows, the magic-link verification email may arrive seconds-to-minutes later. The current claim page handles that fine (`/view/[code]/claim` is the post-auth landing, idempotent if revisited), but worth surfacing in copy at Step 9.
+
+**Plan revision recommendation (optional):**
+- *Suggestion (defer)*: ghost-to-ghost transfer (e.g. one member splits off into multiple, or merge two ghosts). Not needed for launch; add to a V2 ideas list.
+- *Suggestion (defer)*: rate-limit access-code lookups to make code-guessing impractical. With 30^8 ≈ 6.5T possibilities, brute force is already slow, but a real WAF rule is worth doing before launch.
+
+**Next prompt:** see Section 9 at bottom of file.
+
 ---
 
 ## Section 8 — Plan Revisions (Append here — do not overwrite Section 6)
@@ -362,38 +400,42 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 ## Section 9 — Next Prompt (Overwrite this section each step)
 
-**For:** Claude Code
-**Step:** 8 — Ghost user / no-signup viewer
+**For:** Cursor
+**Step:** 9 — Settings, pricing, help, legal, onboarding polish + Stripe scaffold (paywall OFF)
 
 ### Read first
 Before doing anything else, read this entire `BLUEPRINT.md`. Pay particular attention to:
-- **Section 0** — No forced signup; ghost users are a launch moat.
-- **Section 1** — `ghost_users` table, `accessCode`, claim flow.
-- **Section 4** — Screens 15 (invite) and 16 (`/view/[code]`).
-- **Section 5** — The No-Forced-Signup Rule. Build into routing and data model; do not defer.
-- **Section 6** — Step 8 in the original plan.
-- **Section 7** — Step Log through Step 7. Invite page exists as a stub; settlements and balances are live.
+- **Section 0** — Pricing model: $5/mo in CA/US/UK launch market. Free during build.
+- **Section 3** — Stripe ships integrated but inactive at launch; `PAYWALL_ENABLED=false` is already in `.env.local` and Vercel.
+- **Section 4** — Screens 1 (landing), 3 (onboarding polish), 17 (settings), 18 (pricing), 19 (help), 20 (legal).
+- **Section 5** — The No-Checkpoint Rule. Don't ask for design opinions; ship the simplest functional version.
+- **Section 6** — Step 9 in the original plan.
+- **Section 7** — Step Log through Step 8. The ghost-user viewer is live; Stripe was deliberately deferred to this step.
 
 ### Task
-Build the cold-start moat: one-time codes, magic-link routes, and the public ghost viewer.
+Add the surrounding chrome the product needs to look launchable without flipping the paywall on.
 
 Concrete deliverables:
-1. **Invite page** at `/app/g/[id]/invite` — generate or display each ghost member's `accessCode`; copy link button for `/view/[code]`; short instructions for sharing without forcing signup.
-2. **Public ghost view** at `/view/[code]` — no auth required. Show: group name, the ghost's display name, their net balance in the group, recent expenses affecting them (amount + their share), active rules summary. Button to mark a settlement (from them to creditor) if they owe — or link to balances explanation.
-3. **Claim flow** — optional CTA on `/view/[code]`: "Create an account to keep history" that links to `/auth` with a return URL; on signup, set `ghost_users.claimed_by_user_id` and re-point `group_members` / expense rows from ghost to user (document exact migration in Step Log).
-4. **Server actions** for generating/regenerating access codes (members only) and recording a settlement from the public view (scoped to the ghost's identity via code).
-5. **Do not change** the rules engine, rule builder, finder, or templates unless you find a blocking bug — log suggestions in the Step Log.
+1. **Settings page** at `/app/settings` (Screen 17) — name, email (read-only), declared income (optional), preferred currency, language (English only at launch — show the picker disabled with a "more soon" hint), data-sharing opt-in toggle, "sign out" and a "delete account" stub (red-button + confirm modal; can be a no-op server action with a TODO comment for now).
+2. **Pricing page** at `/pricing` (Screen 18) — three tiers: **Free** (everything that exists today), **Fair** ($5/mo — unlocks "anything we paywall later"), **Trip Pass** ($4 one-time, multi-month group). Make it informational only; the "Subscribe" buttons should be **disabled** with a tooltip "Coming soon" since `PAYWALL_ENABLED=false`.
+3. **Help / FAQ** at `/help` (Screen 19) — 5–8 short questions: how rules work, can I use Faircutter without an account, how ghost invites work, do you store my bank data (no), how do I export my data, how do I delete my account, can I change a rule after expenses applied (yes, future expenses only), what's the pricing model.
+4. **Legal pages** at `/privacy` and `/terms` (Screen 20) — boilerplate is fine; clearly marked draft. Include a "last updated" date. Cover the basics: what data we collect, how we use it, how to delete it, what we don't do (no bank data, no sell to advertisers).
+5. **Landing page polish** at `/` (Screen 1) — currently bare. Add: 3-bullet "what makes Faircutter different" (rules not transactions; no-signup invites; fair without nagging); footer with links to Pricing, Help, Privacy, Terms; keep tagline.
+6. **Onboarding polish** at `/onboarding` (Screen 3) — already works; add a one-sentence header per template card explaining who it's for, and a small note about ghost members ("you'll get an access link to share with each one").
+7. **Stripe scaffold** — wire the Stripe SDK as a server-only client at `src/lib/stripe.ts`. Configure the three products in your Stripe **test mode** dashboard (paste IDs into `.env.local` as `STRIPE_PRICE_FAIR_MONTHLY` and `STRIPE_PRICE_TRIP_PASS`). Create a stub `/api/stripe/webhook` route that verifies the signature and logs the event — do not enable any actual charging logic. The `PAYWALL_ENABLED` flag stays `false`.
+8. **Do not change** the rules engine, the rule builder, the rule finder, templates, the ghost viewer, settlements, or the schema.
 
 ### Do NOT do in this step
-- Do **not** add Stripe, settings polish, or CSV export (Steps 9–10).
-- Do **not** add smart netting or push notifications.
-- Do **not** redesign the authenticated app chrome beyond what invite/view need.
+- Do **not** flip `PAYWALL_ENABLED` to true.
+- Do **not** add CSV export — that's Step 10.
+- Do **not** add Sentry / PostHog wiring — that's Step 11.
+- Do **not** translate any strings yet. English copy stays in JSX inline. next-intl wiring is a Step 11 concern at the earliest.
 
 ### End-of-step instructions
 1. Append a Step Log entry in Section 7.
-2. Overwrite Section 9 with the Step 9 prompt (Cursor — settings, pricing, help, legal, onboarding polish).
-3. Commit with message `Step 8: Ghost user viewer` (and `Step 8: Update blueprint` if you update this file in a second commit).
-4. Tell the founder you're done.
+2. Overwrite Section 9 with the Step 10 prompt (Codex — CSV export and admin utility scripts).
+3. Commit with `Step 9: Settings, pricing, legal, Stripe scaffold` (and a second `Step 9: Update blueprint` commit).
+4. Tell the founder you're done and what test-mode Stripe IDs you used.
 
 ---
 
