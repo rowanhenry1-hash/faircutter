@@ -287,7 +287,41 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 **Next prompt:** see Section 9 at bottom of file.
 ```
 
-*(No entries yet — first entry goes here after Step 1.)*
+### Steps 1–6 — Claude Code — 2026-05-23
+**What was done:**
+- Step 1: Next.js 16 + TS + Tailwind v4 + shadcn-style primitives; Drizzle ORM connected to Neon; Auth.js v5 with Resend magic-link + Credentials email/password; landing, /auth, /auth/check-email, /app routes; first migration applied.
+- Step 2: Full DB schema (users, accounts, sessions, verification_tokens, groups, ghost_users, group_members, rules, expenses, expense_participants, settlements, templates, rule_fragments). Drizzle migration applied. Seed script populates 5 named scenarios + 5 templates.
+- Step 3: Rules engine in `src/rules/engine.ts` with all 10 split types as a Zod discriminated union. Largest-remainder cent distribution; every split sums exactly to the expense amount. 22 vitest cases including the full Section 0 parents-plus-adult-child scenario (kid pays $500 rent + 50% of internet, utilities between parents by income, groceries exempt) — all green.
+- Step 4: Group dashboard, group detail, rule library with priority editing, manual JSON rule editor with Zod validation, expense add flow with rule auto-suggest, expense detail with applied-rule audit, balances stub.
+- Step 5: Rule finder (Akinator) at `/app/g/[id]/rules/finder` — 7 server-rendered questions with URL state, preview-and-save flow that compiles answers into a real rule set with notes for any placeholders the user needs to refine.
+- Step 6: Template picker at `/app/g/[id]/rules/templates`; 5 launch templates with placeholder binding by name + position; onboarding instantiates a template into a new group with the user as owner and the rest as ghost members.
+
+**Files created/changed:**
+- Config: `package.json`, `tsconfig.json`, `next.config.ts`, `postcss.config.mjs`, `eslint.config.mjs`, `drizzle.config.ts`, `vitest.config.ts`, `.env.local`, `.env.example`, `.gitignore`.
+- Auth: `src/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/types/next-auth.d.ts`.
+- DB: `src/db/client.ts`, `src/db/schema.ts`, `src/db/migrate.ts`, `src/db/seed.ts`, `drizzle/0000_init.sql`, `drizzle/0001_full_schema.sql`.
+- Rules engine: `src/rules/types.ts`, `src/rules/engine.ts`, `src/rules/engine.test.ts`, `src/rules/templates.ts`, `src/rules/finder.ts`.
+- UI primitives: `src/components/ui/{button,input,card,label}.tsx`, `src/lib/{utils,money,groups}.ts`.
+- Pages: `src/app/{layout,page,globals.css}.{tsx,css}`, `src/app/auth/{page,check-email/page}.tsx`, `src/app/app/{layout,page}.tsx`, `src/app/app/g/[id]/{page,actions.ts,balances/page,invite/page,rules/{page,new/page,editor/page,templates/page,finder/page},expenses/{new/page,[expenseId]/page}}.tsx`, `src/app/onboarding/page.tsx`.
+
+**Deviations from plan and why:**
+- Did Steps 1–6 in one batch instead of separate commits per step. The founder explicitly asked for this. Three commits total: Step 1, Steps 2+3, Steps 4+5+6.
+- Built the **balances view** (Screen 13) inside Step 4 even though the plan assigns it to Step 7. The rule engine and expense flow needed something to verify against during build, and the balances roll-up was already implemented as `computeBalances` in the engine. It's a thin view — the polishing in Step 7 will replace it.
+- Built the dashboard, group detail, and invite stub (Screens 4, 5, 15) inside Step 4 as well — could not reasonably build "rule library + expense add" without surrounding chrome.
+- The Section 0 spec describes parents prorating the mortgage by income *and* the kid paying $500 flat. The launch `parents-plus-adult-child` template models the $500-flat + remainder-equal-between-parents version (simpler, identical outcome when parents have equal incomes). A two-rule version (kid-flat then parents-by-income on the remainder) is a follow-up.
+- Used Auth.js v5 **JWT session strategy** instead of database sessions, because Credentials provider in v5 cannot use database sessions. The Drizzle adapter still persists users + verification tokens normally.
+- Did not deploy to Vercel — repo is pushed to GitHub but the founder needs to import it into Vercel and add the env vars manually. Walked through the env keys in chat.
+
+**What I learned that might affect future steps:**
+- `dotenv/config` does not load `.env.local` by default — Drizzle Kit and seed scripts both needed explicit `dotenv.config({ path: ".env.local" })`. Worth a CLAUDE.md note for future steps.
+- The placeholder convention `__key__` inside template parameters is convenient but brittle — Step 8's ghost-user flow will want to formalize it.
+- The seeded dev user is `founder@seed.faircutter.dev` / password `faircutter-dev`. Magic-link sign-in won't work until the founder provides a Resend API key; until then, password sign-in is the way in.
+
+**Plan revision recommendation (optional):**
+- *Suggestion*: re-scope Step 7 to "polish dashboard, balances, settlements + add settlement actions". The unpolished chrome is already in place from Step 4. Step 7 should add the "mark as settled" buttons and the settlements detail page (Screen 14).
+- *Suggestion*: move basic Sentry init from Step 11 forward to a smaller mid-project tap so we catch errors during Step 7-9 build. Optional, low-effort.
+
+**Next prompt:** see Section 9.
 
 ---
 
@@ -299,44 +333,41 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 ## Section 9 — Next Prompt (Overwrite this section each step)
 
-**For:** Claude Code
-**Step:** 1 — Repo setup and scaffolding
+**For:** Cursor
+**Step:** 7 — Dashboard, group detail, and balances polish + settlements
 
 ### Read first
 Before doing anything else, read this entire `BLUEPRINT.md`. Pay particular attention to:
-- **Section 0** — Why this project exists and who it serves.
-- **Section 3** — Exact stack and hosting choices. Do not substitute.
-- **Section 5** — Rules for AI tools working on this project. Especially the No-Checkpoint Rule and the No-Forced-Signup Rule.
-- **Section 6** — Where this step sits in the overall plan.
+- **Section 0** — The product thesis. Faircutter is about rules; the chrome you're polishing exists to make the rules useful.
+- **Section 4** — The screens you're touching: 4 (dashboard), 5 (group detail), 13 (balances), 14 (settlements).
+- **Section 5** — Rules for AI tools working on this project. The Claude Code Rule means you should not redesign — refine the existing chrome and add settlements.
+- **Section 6** — Original step plan.
+- **Section 7** — Step Log for Steps 1–6. The unpolished versions of dashboard/group-detail/balances are already in place from Step 4.
 
 ### Task
-Set up the Faircutter project repo and get the scaffolding working end-to-end. By the end of this step, the founder should be able to: visit a deployed URL, sign in via magic link or email/password, and see a placeholder authenticated dashboard.
+Polish the visible chrome around the rules engine and add settlement support.
 
 Concrete deliverables:
-1. **Initialize a Next.js app** (App Router, TypeScript, Tailwind, ESLint).
-2. **Install and configure shadcn/ui** with a small starter set of components (Button, Input, Card, Dialog).
-3. **Set up Neon Postgres** — the founder will provide a connection string. If they haven't yet, write a `.env.example` with `DATABASE_URL=` and a note to fill it in. Install Drizzle ORM and configure it.
-4. **Install and configure NextAuth.js (Auth.js v5)** with both providers enabled: magic link (via email — use Resend or Nodemailer; whichever needs less config) and email+password. Store users in Neon via Drizzle.
-5. **Build a minimal landing page at `/`** — just the Faircutter name, a one-line tagline ("Fair splits. Not just equal ones."), and a "Sign in" link. No marketing copy yet.
-6. **Build `/auth`** — sign in / sign up form. Magic link as primary CTA, password as secondary.
-7. **Build `/app`** — placeholder authenticated dashboard. Just a "Welcome, [name]" and a "Sign out" button. The real dashboard comes in Step 7.
-8. **Create the GitHub repo**, push, and deploy to Vercel. Configure environment variables in Vercel. Verify the deployed URL works.
-9. **Initialize git with a clean .gitignore**, commit with the message `Step 1: Repo setup and auth scaffolding`.
+1. **Polish the dashboard** at `/app`. Today it lists groups as plain cards. Add: a "your share this month" total per group, ordering by most-recently-active, an empty-state that links to `/onboarding`.
+2. **Polish the group detail page** at `/app/g/[id]`. Today it shows members, active rules, and recent expenses. Improve: a clearer recent-expenses list (paid-by, your share, rule applied), a single-row "your net" indicator, member avatars (initials in colored circles is fine).
+3. **Polish the balances view** at `/app/g/[id]/balances`. Today it lists net-per-person. Add: pairwise "X owes Y" view (computed from `computeBalances`), a "Settle up" button next to each non-zero pair that opens a settlement form.
+4. **Build the settlement creation flow**. Form: from, to, amount, optional note. Submit creates a row in `settlements`. After save, redirect to `/app/g/[id]/settlements/[id]`.
+5. **Build Screen 14 — settlement detail** at `/app/g/[id]/settlements/[id]`. Show the parties, the amount, the note, the date, with a Delete button.
+6. **Do not change** the rules engine, the rule builder, the rule finder, the templates, or the schema. If you find a bug in those, log it in the Step Log as a suggestion — Claude Code decides at Step 8 whether to fix.
 
 ### Do NOT do in this step
-- Do **not** create the database schema beyond what NextAuth needs for users/sessions. The full schema is Step 2.
-- Do **not** build any of the rules engine. That's Step 3.
-- Do **not** build any of the real product screens (dashboard, groups, expenses). Step 1 is auth + a placeholder.
-- Do **not** ask the founder for design opinions. Use shadcn/ui defaults. Functional > pretty for now.
-- Do **not** add Stripe integration yet — Step 9 handles that.
-- Do **not** set up i18n / next-intl yet — Step 9 handles content/copy/legal.
+- Do **not** redesign the product or change brand language. Keep shadcn defaults.
+- Do **not** add the ghost-user / no-signup viewer (`/view/[code]`). That's Step 8.
+- Do **not** add smart netting or sub-group settlement math. That's V2. Pairwise manual only.
+- Do **not** add Stripe / paywall logic. Step 9.
+- Do **not** modify any seed data.
 
 ### End-of-step instructions
 1. Append a Step Log entry in Section 7 of this file describing what you built, what files you created, any deviations, and what you learned.
 2. If you have a plan revision suggestion, note it in the Step Log entry as a *suggestion* — do not modify Section 6.
-3. Overwrite this Section 9 with the next prompt for **Step 2 (Claude Code — Database schema and seeds)**. Include all the same fields: For / Step / Read first / Task / Do NOT do / End-of-step instructions.
-4. Commit the blueprint update separately with message `Step 1: Update blueprint`.
-5. Tell the founder you're done and what the deployed URL is.
+3. Overwrite this Section 9 with the next prompt for **Step 8 (Claude Code — Ghost user / no-signup viewer)**.
+4. Commit the blueprint update separately with message `Step 7: Update blueprint`.
+5. Tell the founder you're done.
 
 ---
 
