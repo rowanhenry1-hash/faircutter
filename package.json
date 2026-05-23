@@ -15,7 +15,9 @@
     "db:seed": "tsx src/db/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "stripe:setup-test": "tsx scripts/stripe-setup-test-products.ts --write-env"
+    "stripe:setup-test": "tsx scripts/stripe-setup-test-products.ts --write-env",
+    "admin:reset-group": "tsx scripts/reset-group.ts",
+    "admin:dump-user": "tsx scripts/dump-user-data.ts"
   },
   "repository": {
     "type": "git",

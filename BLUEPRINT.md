@@ -422,6 +422,41 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 **Next prompt:** see Section 9 at bottom of file.
 
+### Step 10 — Codex — 2026-05-23
+**What was done:**
+- Added authenticated CSV export downloads for each group:
+  - `/app/g/[id]/export/expenses` exports expense rows with payer, applied rule, participant share, exemption, and exception reason columns.
+  - `/app/g/[id]/export/balances` exports net balances plus simplified pairwise debts from `loadGroupBalanceContext`.
+- Added export buttons to the group detail page so authenticated members can download expenses and balances directly.
+- Added `src/lib/csv.ts` for small CSV escaping/response helpers.
+- Added dev-only admin script `scripts/reset-group.ts`, exposed as `npm run admin:reset-group`, which deletes a group's expenses, settlements, and rules while keeping the group and members.
+- Added dev-only admin script `scripts/dump-user-data.ts`, exposed as `npm run admin:dump-user`, which exports a user's groups, memberships, ghosts, rules, expenses, expense participant rows, and settlements as JSON.
+- Fixed one test-only typing issue in `src/rules/engine.test.ts` by making the exempt rule's default fallback explicit.
+
+**Files created/changed:**
+- `src/lib/csv.ts`
+- `src/app/app/g/[id]/export/expenses/route.ts`
+- `src/app/app/g/[id]/export/balances/route.ts`
+- `src/app/app/g/[id]/page.tsx`
+- `scripts/reset-group.ts`
+- `scripts/dump-user-data.ts`
+- `package.json`
+- `src/rules/engine.test.ts`
+- `BLUEPRINT.md`
+
+**Deviations from plan and why:**
+- Used two separate CSV downloads rather than one file, because CSV has no sheet concept and the blueprint explicitly allowed separate downloads.
+- Touched `src/rules/engine.test.ts` only to satisfy TypeScript validation; the rules engine implementation was not changed.
+
+**What I learned that might affect future steps:**
+- Export authorization currently duplicates the same membership check pattern used in server actions. If more member-only route handlers are added in Step 11 or later, a shared `requireGroupMembership` helper would reduce drift.
+- The JSON dump intentionally includes whole group-level records for groups the user belongs to. Before a real GDPR flow ships, decide whether exports should include full shared group history or only records directly involving the requesting user.
+
+**Plan revision recommendation (optional):**
+- None.
+
+**Next prompt:** see Section 9 at bottom of file.
+
 ---
 
 ## Section 8 — Plan Revisions (Append here — do not overwrite Section 6)
@@ -432,28 +467,30 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 ## Section 9 — Next Prompt (Overwrite this section each step)
 
-**For:** Codex
-**Step:** 10 — CSV export and admin utility scripts
+**For:** Claude Code
+**Step:** 11 — End-to-end review pass
 
 ### Read first
-Read this entire `BLUEPRINT.md`. Focus on Section 1 (key outputs include CSV export), Section 6 Step 10, and Section 7 Step Log through Step 9.
+Read this entire `BLUEPRINT.md`. Focus on Section 0's concrete household example, Section 4's full launch surface, Section 6 Step 11, and the Step Log through Step 10.
 
 ### Task
-1. **CSV export** — authenticated route or server action to download a group's expenses and balances as CSV (one file or two sheets as separate downloads). Use existing `loadGroupBalanceContext` and expense queries.
-2. **Admin script: reset group** — `tsx` script (e.g. `scripts/reset-group.ts`) that deletes expenses/settlements/rules for a group id, keeps members. Dev-only; document in script header.
-3. **Admin script: dump user data** — `tsx` script that exports a user's groups, expenses, rules as JSON for future GDPR requests. Dev-only.
-4. **Do not change** rules engine, paywall flag, or ghost viewer unless a blocking bug.
+1. Walk every launch screen end-to-end with seeded data: `/`, `/auth`, `/onboarding`, `/app`, group detail, rules entry/template/finder/manual/list, add expense, expense detail, balances, settlement detail, invite, ghost viewer, settings, pricing, help, privacy, terms, CSV exports.
+2. Verify the rules engine handles the Section 0 parents + adult working child example cleanly, including prorated parent expenses, internet exception, groceries opt-out, and flat child rent contribution.
+3. Fix bugs found during the walkthrough. Keep copy tweaks limited to egregious or confusing text.
+4. Add basic Sentry/PostHog scaffolding if still appropriate and low-risk.
+5. Write or tighten `README.md` so the repo is usable by the founder: setup, env vars, seed login, dev commands, Stripe test setup, admin scripts, and deploy notes.
 
 ### Do NOT do in this step
-- No Sentry/PostHog (Step 11).
-- No README overhaul (Step 11).
 - No paywall / Stripe checkout.
+- No native app work.
+- No bank connection, AI paystub scanning, push notifications, or multi-currency/FX.
+- No large visual redesign unless a screen is functionally unusable.
 
 ### End-of-step instructions
 1. Append Step Log entry in Section 7.
-2. Overwrite Section 9 with Step 11 prompt (Claude Code — end-to-end review).
-3. Commit `Step 10: CSV export and admin scripts` (+ blueprint commit).
-4. Tell the founder how to run the scripts.
+2. Overwrite Section 9 with a launch/post-review follow-up prompt or mark the blueprint complete if there is no next build step.
+3. Commit `Step 11: end-to-end review pass`.
+4. Tell the founder what was verified, what was fixed, and any launch blockers that remain.
 
 ---
 

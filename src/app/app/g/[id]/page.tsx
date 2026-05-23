@@ -157,6 +157,12 @@ export default async function GroupDetailPage({
           <Button asChild variant="outline">
             <Link href={`/app/g/${id}/invite`}>Invite</Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link href={`/app/g/${id}/export/expenses`}>Export expenses</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/app/g/${id}/export/balances`}>Export balances</Link>
+          </Button>
         </div>
       </div>
 

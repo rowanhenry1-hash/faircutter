@@ -233,7 +233,7 @@ describe("exempt", () => {
         priority: 1,
         appliesToCategories: ["groceries"],
         splitType: "exempt",
-        parameters: { exemptIds: ["c"] },
+        parameters: { exemptIds: ["c"], fallback: "equal" },
       },
     ];
     const split = applyRules({
