@@ -323,6 +323,35 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 **Next prompt:** see Section 9.
 
+### Step 7 — Cursor — 2026-05-23
+**What was done:**
+- Polished `/app` dashboard: per-group net balance, your share this month, sort by most recent expense activity, empty state links to `/onboarding`.
+- Polished `/app/g/[id]`: member initials avatars, your net summary, recent expenses show paid-by, your share, and applied rule name.
+- Polished `/app/g/[id]/balances`: pairwise "who owes whom" (greedy simplification from `computeBalances`), inline Settle up forms, net-per-person retained.
+- Added settlement server actions (`createSettlement`, `deleteSettlement`) and Screen 14 at `/app/g/[id]/settlements/[id]`.
+- Extracted shared balance loading (`loadGroupBalanceContext`) and pairwise debt math (`computePairwiseDebts` in `src/lib/pairwise-debts.ts`).
+- Fixed `loadGroupParticipants` to resolve real user display names (not just ghosts).
+
+**Files created/changed:**
+- `src/lib/balances.ts`, `src/lib/pairwise-debts.ts`, `src/lib/balances.test.ts`
+- `src/lib/groups.ts`
+- `src/components/member-avatar.tsx`, `src/components/settle-up-form.tsx`
+- `src/app/app/page.tsx`, `src/app/app/g/[id]/page.tsx`, `src/app/app/g/[id]/balances/page.tsx`
+- `src/app/app/g/[id]/settlements/[settlementId]/page.tsx`
+- `src/app/app/g/[id]/actions.ts`
+
+**Deviations from plan and why:**
+- None. Re-scoped polish from Step 4 log was completed as specified (settlements were the main net-new work).
+
+**What I learned that might affect future steps:**
+- `computeBalances` returns per-person nets only; pairwise display needs a separate simplifier — kept out of `engine.ts` per Step 7 scope.
+- Dashboard loads balance context per group (N+1 queries). Fine for dev; consider a batched query if groups list grows large.
+
+**Plan revision recommendation (optional):**
+- None.
+
+**Next prompt:** see Section 9 at bottom of file.
+
 ---
 
 ## Section 8 — Plan Revisions (Append here — do not overwrite Section 6)
@@ -333,41 +362,38 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 ## Section 9 — Next Prompt (Overwrite this section each step)
 
-**For:** Cursor
-**Step:** 7 — Dashboard, group detail, and balances polish + settlements
+**For:** Claude Code
+**Step:** 8 — Ghost user / no-signup viewer
 
 ### Read first
 Before doing anything else, read this entire `BLUEPRINT.md`. Pay particular attention to:
-- **Section 0** — The product thesis. Faircutter is about rules; the chrome you're polishing exists to make the rules useful.
-- **Section 4** — The screens you're touching: 4 (dashboard), 5 (group detail), 13 (balances), 14 (settlements).
-- **Section 5** — Rules for AI tools working on this project. The Claude Code Rule means you should not redesign — refine the existing chrome and add settlements.
-- **Section 6** — Original step plan.
-- **Section 7** — Step Log for Steps 1–6. The unpolished versions of dashboard/group-detail/balances are already in place from Step 4.
+- **Section 0** — No forced signup; ghost users are a launch moat.
+- **Section 1** — `ghost_users` table, `accessCode`, claim flow.
+- **Section 4** — Screens 15 (invite) and 16 (`/view/[code]`).
+- **Section 5** — The No-Forced-Signup Rule. Build into routing and data model; do not defer.
+- **Section 6** — Step 8 in the original plan.
+- **Section 7** — Step Log through Step 7. Invite page exists as a stub; settlements and balances are live.
 
 ### Task
-Polish the visible chrome around the rules engine and add settlement support.
+Build the cold-start moat: one-time codes, magic-link routes, and the public ghost viewer.
 
 Concrete deliverables:
-1. **Polish the dashboard** at `/app`. Today it lists groups as plain cards. Add: a "your share this month" total per group, ordering by most-recently-active, an empty-state that links to `/onboarding`.
-2. **Polish the group detail page** at `/app/g/[id]`. Today it shows members, active rules, and recent expenses. Improve: a clearer recent-expenses list (paid-by, your share, rule applied), a single-row "your net" indicator, member avatars (initials in colored circles is fine).
-3. **Polish the balances view** at `/app/g/[id]/balances`. Today it lists net-per-person. Add: pairwise "X owes Y" view (computed from `computeBalances`), a "Settle up" button next to each non-zero pair that opens a settlement form.
-4. **Build the settlement creation flow**. Form: from, to, amount, optional note. Submit creates a row in `settlements`. After save, redirect to `/app/g/[id]/settlements/[id]`.
-5. **Build Screen 14 — settlement detail** at `/app/g/[id]/settlements/[id]`. Show the parties, the amount, the note, the date, with a Delete button.
-6. **Do not change** the rules engine, the rule builder, the rule finder, the templates, or the schema. If you find a bug in those, log it in the Step Log as a suggestion — Claude Code decides at Step 8 whether to fix.
+1. **Invite page** at `/app/g/[id]/invite` — generate or display each ghost member's `accessCode`; copy link button for `/view/[code]`; short instructions for sharing without forcing signup.
+2. **Public ghost view** at `/view/[code]` — no auth required. Show: group name, the ghost's display name, their net balance in the group, recent expenses affecting them (amount + their share), active rules summary. Button to mark a settlement (from them to creditor) if they owe — or link to balances explanation.
+3. **Claim flow** — optional CTA on `/view/[code]`: "Create an account to keep history" that links to `/auth` with a return URL; on signup, set `ghost_users.claimed_by_user_id` and re-point `group_members` / expense rows from ghost to user (document exact migration in Step Log).
+4. **Server actions** for generating/regenerating access codes (members only) and recording a settlement from the public view (scoped to the ghost's identity via code).
+5. **Do not change** the rules engine, rule builder, finder, or templates unless you find a blocking bug — log suggestions in the Step Log.
 
 ### Do NOT do in this step
-- Do **not** redesign the product or change brand language. Keep shadcn defaults.
-- Do **not** add the ghost-user / no-signup viewer (`/view/[code]`). That's Step 8.
-- Do **not** add smart netting or sub-group settlement math. That's V2. Pairwise manual only.
-- Do **not** add Stripe / paywall logic. Step 9.
-- Do **not** modify any seed data.
+- Do **not** add Stripe, settings polish, or CSV export (Steps 9–10).
+- Do **not** add smart netting or push notifications.
+- Do **not** redesign the authenticated app chrome beyond what invite/view need.
 
 ### End-of-step instructions
-1. Append a Step Log entry in Section 7 of this file describing what you built, what files you created, any deviations, and what you learned.
-2. If you have a plan revision suggestion, note it in the Step Log entry as a *suggestion* — do not modify Section 6.
-3. Overwrite this Section 9 with the next prompt for **Step 8 (Claude Code — Ghost user / no-signup viewer)**.
-4. Commit the blueprint update separately with message `Step 7: Update blueprint`.
-5. Tell the founder you're done.
+1. Append a Step Log entry in Section 7.
+2. Overwrite Section 9 with the Step 9 prompt (Cursor — settings, pricing, help, legal, onboarding polish).
+3. Commit with message `Step 8: Ghost user viewer` (and `Step 8: Update blueprint` if you update this file in a second commit).
+4. Tell the founder you're done.
 
 ---
 
