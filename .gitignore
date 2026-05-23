@@ -1,0 +1,32 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Env
+.env
+.env.local
+.env*.local
+.env.development
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+.npm
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Drizzle
+drizzle/meta/_journal.bak
