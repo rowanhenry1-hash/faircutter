@@ -390,6 +390,36 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 **Next prompt:** see Section 9 at bottom of file.
 
+### Step 9 — Cursor — 2026-05-23
+**What was done:**
+- Built `/app/settings` (Screen 17): profile form (name, read-only email, optional income, currency, disabled language picker, data-sharing opt-in), save action, sign out, delete-account confirm stub.
+- Built `/pricing` (Screen 18): Free / Fair ($5/mo) / Trip Pass ($4) tiers; paid CTAs disabled with `title="Coming soon"` while `PAYWALL_ENABLED=false`.
+- Built `/help` (Screen 19): 8-question FAQ covering rules, ghosts, bank data, export, deletion, rule edits, pricing.
+- Built `/privacy` and `/terms` (Screen 20): draft boilerplate with last-updated date.
+- Polished `/` landing: three differentiator bullets + footer links.
+- Polished `/onboarding`: `whoItsFor` line on each template card, ghost access-link note on member form, working `?template=blank` flow.
+- Stripe scaffold: `stripe` npm package, `src/lib/stripe.ts`, stub `POST /api/stripe/webhook` with signature verification + console logging only.
+
+**Files created/changed:**
+- `package.json`, `package-lock.json` (stripe dependency)
+- `src/lib/stripe.ts`, `src/app/api/stripe/webhook/route.ts`
+- `src/app/app/settings/{page.tsx,actions.ts}`, `src/components/delete-account-button.tsx`
+- `src/app/{pricing,help,privacy,terms}/page.tsx`, `src/app/page.tsx`, `src/app/onboarding/page.tsx`
+- `src/components/{site-footer,public-page-shell}.tsx`
+- `src/rules/templates.ts` (`whoItsFor` field)
+- `.env.example`
+
+**Deviations from plan and why:**
+- Did not create Stripe test products in the founder's dashboard (no dashboard access). `.env.example` documents placeholder `price_` IDs; founder pastes real test-mode price IDs after creating products.
+
+**What I learned that might affect future steps:**
+- `isPaywallEnabled()` lives in `server-only` `stripe.ts` — fine for server components; client checkout UI in a later step should read a public env or API flag instead.
+
+**Plan revision recommendation (optional):**
+- None.
+
+**Next prompt:** see Section 9 at bottom of file.
+
 ---
 
 ## Section 8 — Plan Revisions (Append here — do not overwrite Section 6)
@@ -400,42 +430,28 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 
 ## Section 9 — Next Prompt (Overwrite this section each step)
 
-**For:** Cursor
-**Step:** 9 — Settings, pricing, help, legal, onboarding polish + Stripe scaffold (paywall OFF)
+**For:** Codex
+**Step:** 10 — CSV export and admin utility scripts
 
 ### Read first
-Before doing anything else, read this entire `BLUEPRINT.md`. Pay particular attention to:
-- **Section 0** — Pricing model: $5/mo in CA/US/UK launch market. Free during build.
-- **Section 3** — Stripe ships integrated but inactive at launch; `PAYWALL_ENABLED=false` is already in `.env.local` and Vercel.
-- **Section 4** — Screens 1 (landing), 3 (onboarding polish), 17 (settings), 18 (pricing), 19 (help), 20 (legal).
-- **Section 5** — The No-Checkpoint Rule. Don't ask for design opinions; ship the simplest functional version.
-- **Section 6** — Step 9 in the original plan.
-- **Section 7** — Step Log through Step 8. The ghost-user viewer is live; Stripe was deliberately deferred to this step.
+Read this entire `BLUEPRINT.md`. Focus on Section 1 (key outputs include CSV export), Section 6 Step 10, and Section 7 Step Log through Step 9.
 
 ### Task
-Add the surrounding chrome the product needs to look launchable without flipping the paywall on.
-
-Concrete deliverables:
-1. **Settings page** at `/app/settings` (Screen 17) — name, email (read-only), declared income (optional), preferred currency, language (English only at launch — show the picker disabled with a "more soon" hint), data-sharing opt-in toggle, "sign out" and a "delete account" stub (red-button + confirm modal; can be a no-op server action with a TODO comment for now).
-2. **Pricing page** at `/pricing` (Screen 18) — three tiers: **Free** (everything that exists today), **Fair** ($5/mo — unlocks "anything we paywall later"), **Trip Pass** ($4 one-time, multi-month group). Make it informational only; the "Subscribe" buttons should be **disabled** with a tooltip "Coming soon" since `PAYWALL_ENABLED=false`.
-3. **Help / FAQ** at `/help` (Screen 19) — 5–8 short questions: how rules work, can I use Faircutter without an account, how ghost invites work, do you store my bank data (no), how do I export my data, how do I delete my account, can I change a rule after expenses applied (yes, future expenses only), what's the pricing model.
-4. **Legal pages** at `/privacy` and `/terms` (Screen 20) — boilerplate is fine; clearly marked draft. Include a "last updated" date. Cover the basics: what data we collect, how we use it, how to delete it, what we don't do (no bank data, no sell to advertisers).
-5. **Landing page polish** at `/` (Screen 1) — currently bare. Add: 3-bullet "what makes Faircutter different" (rules not transactions; no-signup invites; fair without nagging); footer with links to Pricing, Help, Privacy, Terms; keep tagline.
-6. **Onboarding polish** at `/onboarding` (Screen 3) — already works; add a one-sentence header per template card explaining who it's for, and a small note about ghost members ("you'll get an access link to share with each one").
-7. **Stripe scaffold** — wire the Stripe SDK as a server-only client at `src/lib/stripe.ts`. Configure the three products in your Stripe **test mode** dashboard (paste IDs into `.env.local` as `STRIPE_PRICE_FAIR_MONTHLY` and `STRIPE_PRICE_TRIP_PASS`). Create a stub `/api/stripe/webhook` route that verifies the signature and logs the event — do not enable any actual charging logic. The `PAYWALL_ENABLED` flag stays `false`.
-8. **Do not change** the rules engine, the rule builder, the rule finder, templates, the ghost viewer, settlements, or the schema.
+1. **CSV export** — authenticated route or server action to download a group's expenses and balances as CSV (one file or two sheets as separate downloads). Use existing `loadGroupBalanceContext` and expense queries.
+2. **Admin script: reset group** — `tsx` script (e.g. `scripts/reset-group.ts`) that deletes expenses/settlements/rules for a group id, keeps members. Dev-only; document in script header.
+3. **Admin script: dump user data** — `tsx` script that exports a user's groups, expenses, rules as JSON for future GDPR requests. Dev-only.
+4. **Do not change** rules engine, paywall flag, or ghost viewer unless a blocking bug.
 
 ### Do NOT do in this step
-- Do **not** flip `PAYWALL_ENABLED` to true.
-- Do **not** add CSV export — that's Step 10.
-- Do **not** add Sentry / PostHog wiring — that's Step 11.
-- Do **not** translate any strings yet. English copy stays in JSX inline. next-intl wiring is a Step 11 concern at the earliest.
+- No Sentry/PostHog (Step 11).
+- No README overhaul (Step 11).
+- No paywall / Stripe checkout.
 
 ### End-of-step instructions
-1. Append a Step Log entry in Section 7.
-2. Overwrite Section 9 with the Step 10 prompt (Codex — CSV export and admin utility scripts).
-3. Commit with `Step 9: Settings, pricing, legal, Stripe scaffold` (and a second `Step 9: Update blueprint` commit).
-4. Tell the founder you're done and what test-mode Stripe IDs you used.
+1. Append Step Log entry in Section 7.
+2. Overwrite Section 9 with Step 11 prompt (Claude Code — end-to-end review).
+3. Commit `Step 10: CSV export and admin scripts` (+ blueprint commit).
+4. Tell the founder how to run the scripts.
 
 ---
 
