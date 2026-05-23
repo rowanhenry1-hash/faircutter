@@ -399,10 +399,12 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 - Polished `/` landing: three differentiator bullets + footer links.
 - Polished `/onboarding`: `whoItsFor` line on each template card, ghost access-link note on member form, working `?template=blank` flow.
 - Stripe scaffold: `stripe` npm package, `src/lib/stripe.ts`, stub `POST /api/stripe/webhook` with signature verification + console logging only.
+- Follow-up (same step, later commit): `scripts/stripe-setup-test-products.ts` + `npm run stripe:setup-test` — creates Fair ($5/mo recurring) and Trip Pass ($4 one-time) in Stripe **test mode** via API, writes `STRIPE_PRICE_FAIR_MONTHLY` and `STRIPE_PRICE_TRIP_PASS` to `.env.local` with `--write-env`. Lookup keys: `faircutter_fair_monthly`, `faircutter_trip_pass` (idempotent re-runs).
 
 **Files created/changed:**
 - `package.json`, `package-lock.json` (stripe dependency)
 - `src/lib/stripe.ts`, `src/app/api/stripe/webhook/route.ts`
+- `scripts/stripe-setup-test-products.ts` (follow-up commit)
 - `src/app/app/settings/{page.tsx,actions.ts}`, `src/components/delete-account-button.tsx`
 - `src/app/{pricing,help,privacy,terms}/page.tsx`, `src/app/page.tsx`, `src/app/onboarding/page.tsx`
 - `src/components/{site-footer,public-page-shell}.tsx`
@@ -410,7 +412,7 @@ Each step has a specific goal. Do not extend the step's scope to "fix" things yo
 - `.env.example`
 
 **Deviations from plan and why:**
-- Did not create Stripe test products in the founder's dashboard (no dashboard access). `.env.example` documents placeholder `price_` IDs; founder pastes real test-mode price IDs after creating products.
+- Initial Step 9 commit did not create Stripe products (no dashboard access). Founder follow-up used the setup script against `sk_test_...` in `.env.local`; test price IDs are in local env only — still paste `STRIPE_PRICE_*` into Vercel manually. `.env.local` is never committed.
 
 **What I learned that might affect future steps:**
 - `isPaywallEnabled()` lives in `server-only` `stripe.ts` — fine for server components; client checkout UI in a later step should read a public env or API flag instead.
