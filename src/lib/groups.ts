@@ -12,6 +12,7 @@ import {
   rules as rulesTable,
   expenses as expensesTable,
   expenseParticipants,
+  users,
 } from "@/db/schema";
 import type { Participant, Rule } from "@/rules/types";
 
@@ -32,15 +33,19 @@ export async function loadGroupParticipants(groupId: string): Promise<Participan
       incomeSnapshot: groupMembers.incomeSnapshot,
       ghostName: ghostUsers.displayName,
       ghostIncome: ghostUsers.declaredIncome,
+      userName: users.name,
+      userEmail: users.email,
     })
     .from(groupMembers)
     .leftJoin(ghostUsers, eq(ghostUsers.id, groupMembers.ghostUserId))
+    .leftJoin(users, eq(users.id, groupMembers.userId))
     .where(eq(groupMembers.groupId, groupId));
 
   return rows.map((r) => ({
     id: (r.ghostId ?? r.userId) as string,
-    kind: r.ghostId ? "ghost" : "user",
-    displayName: r.ghostName ?? "Member",
+    kind: r.ghostId ? ("ghost" as const) : ("user" as const),
+    displayName:
+      r.ghostName ?? r.userName ?? r.userEmail ?? "Member",
     declaredIncome: r.incomeSnapshot ?? r.ghostIncome ?? undefined,
   }));
 }

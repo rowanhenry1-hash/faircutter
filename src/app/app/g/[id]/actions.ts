@@ -19,6 +19,7 @@ import {
   groupMembers,
   groups,
   rules,
+  settlements,
 } from "@/db/schema";
 import {
   loadGroupParticipants,
@@ -406,4 +407,62 @@ function randomCode(): string {
     s += alphabet[Math.floor(Math.random() * alphabet.length)];
   }
   return s;
+}
+
+// ---------------------------------------------------------------------------
+// Settlements
+// ---------------------------------------------------------------------------
+
+export async function createSettlement(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  const { group } = await requireMembership(groupId);
+
+  const fromId = formData.get("fromId") as string;
+  const toId = formData.get("toId") as string;
+  const note = (formData.get("note") as string) || undefined;
+  const amount = stringToMinorUnits(
+    (formData.get("amount") as string) || "0",
+    group.currency,
+  );
+
+  if (fromId === toId) throw new Error("From and to must be different people");
+  if (amount <= 0) throw new Error("Amount must be positive");
+
+  const participants = await loadGroupParticipants(groupId);
+  const from = participants.find((p) => p.id === fromId);
+  const to = participants.find((p) => p.id === toId);
+  if (!from || !to) throw new Error("Unknown participant");
+
+  const [row] = await db
+    .insert(settlements)
+    .values({
+      groupId,
+      fromUserId: from.kind === "user" ? fromId : null,
+      fromGhostId: from.kind === "ghost" ? fromId : null,
+      toUserId: to.kind === "user" ? toId : null,
+      toGhostId: to.kind === "ghost" ? toId : null,
+      amount,
+      currency: group.currency,
+      note,
+      settlementType: "manual",
+    })
+    .returning();
+
+  revalidatePath(`/app/g/${groupId}/balances`);
+  revalidatePath(`/app/g/${groupId}`);
+  revalidatePath("/app");
+  redirect(`/app/g/${groupId}/settlements/${row.id}`);
+}
+
+export async function deleteSettlement(formData: FormData) {
+  const groupId = formData.get("groupId") as string;
+  const settlementId = formData.get("settlementId") as string;
+  await requireMembership(groupId);
+
+  await db.delete(settlements).where(eq(settlements.id, settlementId));
+
+  revalidatePath(`/app/g/${groupId}/balances`);
+  revalidatePath(`/app/g/${groupId}`);
+  revalidatePath("/app");
+  redirect(`/app/g/${groupId}/balances`);
 }
