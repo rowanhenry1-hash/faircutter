@@ -14,6 +14,8 @@ export type LaunchTemplate = {
   slug: string;
   name: string;
   description: string;
+  /** One-line audience hint for onboarding template cards. */
+  whoItsFor: string;
   appliesTo: "couple" | "roommates" | "household" | "trip";
   rules: TemplateRuleDef[];
   /** Suggested seeded members for development; placeholder display names. */
@@ -27,6 +29,7 @@ export const TEMPLATES: LaunchTemplate[] = [
     name: "Couple, two incomes",
     description:
       "Joint expenses (rent, utilities, groceries) are prorated by income. Personal expenses stay off the books.",
+    whoItsFor: "Couples sharing rent and bills with different incomes.",
     appliesTo: "couple",
     suggestedMembers: [
       { displayName: "Alex", declaredIncome: 7500 },
@@ -58,6 +61,7 @@ export const TEMPLATES: LaunchTemplate[] = [
     slug: "roommates-equal",
     name: "Roommates, equal split",
     description: "All shared bills split equally three ways.",
+    whoItsFor: "Roommates or friends who split everything evenly.",
     appliesTo: "roommates",
     suggestedMembers: [
       { displayName: "Riley" },
@@ -82,6 +86,8 @@ export const TEMPLATES: LaunchTemplate[] = [
     name: "Roommates, income-proportional",
     description:
       "Rent and utilities are prorated by income. Groceries split equally. Subscriptions rotate.",
+    whoItsFor:
+      "Roommates where big bills follow income and smaller costs stay simple.",
     appliesTo: "roommates",
     suggestedMembers: [
       { displayName: "Pat", declaredIncome: 6000 },
@@ -129,6 +135,8 @@ export const TEMPLATES: LaunchTemplate[] = [
     name: "Parents + adult working child",
     description:
       "Parents prorate by income. Adult child pays a fixed monthly amount toward rent and 50% of the internet. Groceries are between the parents only.",
+    whoItsFor:
+      "Parents plus an adult working child with exceptions on specific bills.",
     appliesTo: "household",
     suggestedMembers: [
       { displayName: "Dad", declaredIncome: 8000 },
@@ -184,6 +192,7 @@ export const TEMPLATES: LaunchTemplate[] = [
     name: "Group trip",
     description:
       "Equal splits across all attendees with per-expense opt-outs. Settles at the end of the trip.",
+    whoItsFor: "Friend groups on a trip — equal splits with per-expense opt-outs.",
     appliesTo: "trip",
     suggestedMembers: [
       { displayName: "Aki" },
