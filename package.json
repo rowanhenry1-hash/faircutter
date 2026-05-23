@@ -14,7 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/db/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "stripe:setup-test": "tsx scripts/stripe-setup-test-products.ts --write-env"
   },
   "repository": {
     "type": "git",
