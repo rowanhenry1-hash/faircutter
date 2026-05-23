@@ -51,7 +51,10 @@ export function applyRules(args: {
     return {
       ruleId: null,
       ruleName: "Equal split (fallback)",
-      shares: equalSplit(participantsForExpense(participants, expense), expense.amount),
+      shares: equalSplit(
+        participantsForExpense(participants, expense).map((p) => p.id),
+        expense.amount,
+      ),
     };
   }
 
