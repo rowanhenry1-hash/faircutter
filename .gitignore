@@ -21,6 +21,9 @@ npm-debug.log*
 .idea/
 .DS_Store
 
+# Claude Code harness
+.claude/
+
 # Vercel
 .vercel
 
